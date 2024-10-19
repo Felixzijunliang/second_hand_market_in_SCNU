@@ -6,15 +6,14 @@ const logger = require('morgan');
 const cors = require('cors');
 
 const indexRouter = require('./routes/index');
-const reportRouter = require('./routes/report');
-const adminRouter = require('./routes/admin');
-const selfCERouter = require('./routes/selfCE');
-const caseRouter = require('./routes/case');
 const recordRouter = require('./routes/record');
+const userRouter = require('./routes/user');
 const corsOptions = require('./config/corsconfig');
-const todolistRouter = require('./routes/todolist');
+const productsRouter = require('./routes/products');
+const orderRouter = require('./routes/order');
 
 const checkTokenMiddleware = require('./middlewares/checkTokenMiddleware');
+
 
 const app = express();
 
@@ -26,16 +25,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use('/uploads', express.static(path.join(__dirname, './uploads')));
-app.use('/uploads', checkTokenMiddleware);
+
 
 app.use(cors(corsOptions));
-app.use('/case', caseRouter)
 app.use('/record', recordRouter)
+app.use('/products', productsRouter)
+app.use('/order', orderRouter)
+app.use('/user', userRouter)
 app.use('/', indexRouter);
-app.use('/report', reportRouter);
-app.use('/admin', adminRouter);
-app.use('/selfCE', selfCERouter);
-app.use('/todolist', todolistRouter);
+
 
 // 异常处理
 app.use(function (req, res, next) {

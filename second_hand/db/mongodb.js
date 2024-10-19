@@ -6,6 +6,6 @@
 //}
 module.exports = {
   DBHOST: 'localhost',
-  DBPORT: 27018,
-  DBNAME: 'abdnCE',
+  DBPORT: 27017,
+  DBNAME: 'second_hand',
 }
