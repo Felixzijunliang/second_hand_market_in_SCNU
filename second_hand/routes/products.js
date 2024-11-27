@@ -21,7 +21,7 @@ const upload = multer({ storage: storage });
 // 上传商品信息和图片接口
 router.post('/newproduct', upload.single('image'), async (req, res) => {
   try {
-    const { title, description, price } = req.body;
+    const { title, description, price,status,username } = req.body;
     const imageUrl = `/uploads/${req.file.filename}`;
     const id = uuidv4();
     
@@ -33,6 +33,8 @@ router.post('/newproduct', upload.single('image'), async (req, res) => {
       price,
       imageUrl,
       id,
+      status,
+      username,
     });
 
     // 保存商品信息到数据库
@@ -64,6 +66,8 @@ router.get('/getproduct', async (req, res) => {
       title: product.title,
       description: product.description,
       price: product.price,
+      status : product.status,
+      createdAt: product.createdAt,
       imageUrl: `${req.protocol}://${req.get('host')}${product.imageUrl}`, // 生成完整的 URL
     };
 
@@ -73,6 +77,100 @@ router.get('/getproduct', async (req, res) => {
     res.status(500).json({ message: 'Error fetching product' });
   }
 });
+
+router.delete('/deleteproduct', async (req, res) => {
+  const { productID } = req.body;
+
+  if (!productID) {
+    return res.status(400).json({ message: 'productID is required' });
+  }
+
+  try {
+    const product = await Product.findOneAndUpdate(
+      { id: productID },
+      { isActive: false },
+      { new: true }
+    );
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    res.json({ message: 'Product deleted (set to inactive) successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error deleting product' });
+  }
+});
+router.put('/updateproduct', async (req, res) => {
+  const { productID, title, description, price } = req.body;
+
+  if (!productID || !title || !description || !price) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+
+  try {
+    const product = await Product.findOneAndUpdate(
+      { id: productID, isActive: true },
+      { title, description, price },
+      { new: true }
+    );
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found or is inactive' });
+    }
+
+    res.json({ message: 'Product updated successfully', product });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error updating product' });
+  }
+});
+router.post('/userproducts', async (req, res) => {
+  const { userId } = req.body;  // 获取请求中的用户ID
+
+  if (!userId) {
+    return res.status(400).json({
+      success: false,
+      message: '用户ID是必填的',
+    });
+  }
+
+  try {
+    // 查找所有符合用户ID的商品
+    const products = await Product.find({ username: userId });
+
+    if (products.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '没有找到该用户的商品',
+      });
+    }
+
+    // 返回商品列表
+    const response = {
+      success: true,
+      data: products.map(product => ({
+        id: product.id,
+        title: product.title,
+        description: product.description,
+        price: product.price,
+        imageUrl: `${req.protocol}://${req.get('host')}${product.imageUrl}`, // 生成完整的图片 URL
+        status: product.status,
+        createdAt: product.createdAt,
+      })),
+    };
+
+    res.json(response);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: '获取商品列表时发生错误',
+    });
+  }
+});
+
 
 
 module.exports = router;

@@ -9,6 +9,11 @@ const orderSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  buyeruserID: {
+    type: String,
+    required: true,
+  },
+  
   isActive: {
     type: Boolean,
     default: true
