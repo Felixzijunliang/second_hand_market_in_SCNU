@@ -1,5 +1,4 @@
 const express = require('express');
-const CaseFileModel = require('../models/CaseFileModel');
 const sql = require('../db/sqlpool').pool;
 const { query } = require('../db/sqlpool');
 const multer = require('multer');
