@@ -1,0 +1,96 @@
+import numpy as np
+import pandas as pd
+from datetime import datetime, timedelta
+
+def generate_fixed_data_with_dates(num_users=3, num_records_per_user=333):
+    user_ids = range(1, num_users + 1)
+    
+    fixed_heights = [175, 180, 165]
+    fixed_weights = [70, 80, 65]
+    fixed_ages = [30, 25, 35]
+    
+    data = []
+    
+    for user_id in user_ids:
+        dates = [datetime.now() - timedelta(days=i) for i in range(num_records_per_user)]
+        
+        fatigue_history = [0,0]
+        relaxation_history = [0,0]
+        
+        for day, date in enumerate(dates):
+            steps = np.random.randint(4000, 12000)
+            exercise_time = np.random.randint(20, 80)
+            avg_heart_rate = np.random.randint(60, 80) + (exercise_time // 10) * 2
+            max_heart_rate = avg_heart_rate + np.random.randint(20, 50)
+            sleep_duration = np.random.uniform(5, 9)
+            
+            # 更新疲劳度计算逻辑
+            fatigue_level = 5  # 默认中等疲劳
+            
+            # 根据运动时间影响疲劳度
+            if exercise_time < 40:
+                fatigue_level += 2  # 轻微上升
+            elif 40 <= exercise_time <= 60:
+                fatigue_level -= 3  # 快速下降
+            else:
+                fatigue_level += 3  # 轻微上升
+
+            # 步数和睡眠时间的影响
+            if steps < 6000:
+                fatigue_level += 3
+            elif steps > 8000:
+                fatigue_level -= 3
+
+            if sleep_duration < 6:
+                fatigue_level += 3
+            elif sleep_duration > 8:
+                fatigue_level -= 3
+
+            # 考虑前一天的疲劳程度
+            if fatigue_history:
+                fatigue_level = (0.6*fatigue_level + 0.3*fatigue_history[-1]+0.1*fatigue_history[-2]) 
+            
+            fatigue_level = max(1, min(fatigue_level, 10))  # 限制在1到10之间
+            fatigue_history.append(fatigue_level)
+
+            if len(fatigue_history) >= 5:
+                avg_recent_fatigue = np.mean(fatigue_history[-5:])
+                fatigue_trend = np.mean(np.diff(fatigue_history[-5:]))
+
+                relaxation_training = 0
+                if avg_recent_fatigue >= 7 :
+                    relaxation_training = 1
+                if fatigue_level >= 7 :
+                    relaxation_training = 1
+                
+            else:
+                relaxation_training = 0
+                relaxation_history.append(relaxation_training)
+
+            height = fixed_heights[user_id - 1]
+            weight = fixed_weights[user_id - 1]
+            age = fixed_ages[user_id - 1]
+
+            data.append([
+                user_id, date.strftime('%Y-%m-%d'), steps, exercise_time, avg_heart_rate, 
+                max_heart_rate, sleep_duration, fatigue_level, relaxation_training, 
+                height, weight, age
+            ])
+    
+    columns = [
+        'user_id', 'date', 'steps', 'exercise_time', 'avg_heart_rate', 
+        'max_heart_rate', 'sleep_duration', 'fatigue_level', 
+        'relaxation_training', 'height', 'weight', 'age'
+    ]
+    
+    return pd.DataFrame(data, columns=columns)
+
+# 生成3个用户，每个用户333条数据，总共999条数据
+df = generate_fixed_data_with_dates()
+
+# 保存数据到CSV文件
+df.to_csv('user_health_data01.csv', index=False)
+
+# 查看部分生成的数据
+print("前5条数据:")
+print(df.head())
