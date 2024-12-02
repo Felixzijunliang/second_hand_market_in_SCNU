@@ -21,60 +21,89 @@ const upload = multer({ storage: storage });
 // 上传商品信息和图片接口
 router.post('/newproduct', upload.single('image'), async (req, res) => {
   try {
-    const { title, description, price,status,username } = req.body;
+    console.log('Received request body:', req.body);
+    console.log('Received file:', req.file);
+
+    const { 
+      title, 
+      description, 
+      price, 
+      status, 
+      userid, 
+      username,
+      email,
+      address 
+    } = req.body;
+
+    // 验证必要字段
+    if (!title || !description || !price || !userid || !req.file) {
+      return res.status(400).json({ 
+        message: 'Missing required fields' 
+      });
+    }
+
     const imageUrl = `/uploads/${req.file.filename}`;
     const id = uuidv4();
-    
 
     // 创建商品
     const newProduct = new Product({
+      id,
       title,
       description,
-      price,
+      price: Number(price), // 确保价格是数字类型
       imageUrl,
-      id,
-      status,
+      status: status || 'unsold', // 设置默认值
+      userid,
       username,
+      email: email || '',
+      address: address || '',
     });
 
     // 保存商品信息到数据库
     await newProduct.save();
 
-    res.json({ message: 'Product uploaded successfully',productID:newProduct.id });
+    res.json({ 
+      message: 'Product uploaded successfully',
+      productId: newProduct.id,
+      imageUrl: newProduct.imageUrl 
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error uploading product' });
+    console.error('Error in /newproduct:', err);
+    res.status(500).json({ 
+      message: 'Error uploading product',
+      error: err.message 
+    });
   }
 });
-router.get('/getproduct', async (req, res) => {
-  const { userID, productID } = req.query;
 
-  if (!userID || !productID) {
-    return res.status(400).json({ message: 'userID and productID are required' });
+router.get('/getproduct', async (req, res) => {
+  console.log('getproduct 接口被调用');
+  console.log('查询参数:', req.query);
+  
+  const { userID } = req.query;
+
+  if (!userID) {
+    return res.status(400).json({ message: 'userID is required' });
   }
 
   try {
-    const product = await Product.findOne({ id: productID });
-
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
+    const products = await Product.find({ userid: userID });
 
     // 构建响应格式
-    const response = {
+    const response = products.map(product => ({
       productID: product.id,
       title: product.title,
       description: product.description,
       price: product.price,
-      status : product.status,
+      status: product.status,
       createdAt: product.createdAt,
       imageUrl: `${req.protocol}://${req.get('host')}${product.imageUrl}`, // 生成完整的 URL
-    };
+    }));
 
     res.json(response);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Error fetching product' });
+    res.status(500).json({ message: 'Error fetching products' });
   }
 });
 
@@ -126,11 +155,12 @@ router.put('/updateproduct', async (req, res) => {
     res.status(500).json({ message: 'Error updating product' });
   }
 });
-router.get('/userproducts', async (req, res) => {
-  const { userId } = req.query;  // 获取请求中的用户ID
-  console.log(`Received userId: ${userId}`);
 
-  if (!userId) {
+router.get('/userproducts', async (req, res) => {
+  const { userID } = req.query;  // 改为 userID 以匹配前端
+  console.log(`Received userID: ${userID}`);
+
+  if (!userID) {
     return res.status(400).json({
       success: false,
       message: '用户ID是必填的',
@@ -138,13 +168,13 @@ router.get('/userproducts', async (req, res) => {
   }
 
   try {
-    // 查找所有符合用户ID的商品
-    const products = await Product.find({ username: userId });
+    const products = await Product.find({ userid: userID });
 
     if (products.length === 0) {
-      return res.status(405).json({
-        success: false,
-        message: '没有找到该用户的商品',
+      return res.status(200).json({  // 改为 200，因为空列表是正常情况
+        success: true,
+        data: [],
+        message: '暂无商品',
       });
     }
 
@@ -156,15 +186,16 @@ router.get('/userproducts', async (req, res) => {
         title: product.title,
         description: product.description,
         price: product.price,
-        imageUrl: `${req.protocol}://${req.get('host')}${product.imageUrl}`, // 生成完整的图片 URL
+        imageUrl: `${req.protocol}://${req.get('host')}${product.imageUrl}`,
         status: product.status,
         createdAt: product.createdAt,
+        //userid: product.userid  // 添加 userid 字段
       })),
     };
 
     res.json(response);
   } catch (err) {
-    console.error(err);
+    console.error('获取商品列表错误:', err);
     res.status(500).json({
       success: false,
       message: '获取商品列表时发生错误',
